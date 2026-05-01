@@ -57,7 +57,7 @@ backend/.env
 backend/serviceAccountKey.json
 
 # Machine Learning / Data files
-*.pkl
+
 backend/*_vector_db/
 backend/chroma.sqlite3
 backend/data_set/
