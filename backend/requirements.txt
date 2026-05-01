@@ -31,3 +31,11 @@ tokenizers==0.22.2
 requests==2.32.5
 python-dotenv==1.2.1
 tqdm==4.67.3
+waitress
+
+# FoodLens merged backend dependencies
+fastapi
+uvicorn
+ultralytics
+Pillow
+split-folders

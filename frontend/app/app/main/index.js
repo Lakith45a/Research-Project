@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Dimensions } 
 import { auth, db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
-import { Activity, Heart, User, ChevronRight, LogOut, Bell, Flame, ShieldCheck, MessageSquare, BarChart3 } from 'lucide-react-native';
+import { Activity, Heart, User, ChevronRight, LogOut, Bell, Flame, ShieldCheck, MessageSquare, BarChart3, Camera } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -146,6 +146,24 @@ export default function HomeScreen() {
                                 </View>
                             </TouchableOpacity>
                         </Animated.View>
+
+                        <Animated.View entering={FadeInRight.duration(800).delay(700)}>
+                            <TouchableOpacity
+                                className="bg-white/5 border border-white/10 rounded-[28px] p-5 flex-row items-center"
+                                onPress={() => router.push('/main/food_scan')}
+                            >
+                                <View className="w-14 h-14 bg-emerald-500/10 rounded-2xl items-center justify-center mr-4 border border-emerald-500/20">
+                                    <Camera color="#34d399" size={28} />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-lg font-bold text-white">Food Lens</Text>
+                                    <Text className="text-slate-500 text-xs mt-1">Meal scan and nutrition analysis</Text>
+                                </View>
+                                <View className="bg-white/5 p-2 rounded-xl">
+                                    <ChevronRight color="#475569" size={20} />
+                                </View>
+                            </TouchableOpacity>
+                        </Animated.View>
                     </View>
 
                     <Text className="text-white text-xl font-bold mb-4 ml-1 mt-8">Health Insights</Text>
@@ -161,6 +179,24 @@ export default function HomeScreen() {
                             <View className="flex-1">
                                 <Text className="text-lg font-bold text-white">Risk Dashboard</Text>
                                 <Text className="text-slate-500 text-xs mt-1">Track diabetes trends over time</Text>
+                            </View>
+                            <View className="bg-white/5 p-2 rounded-xl">
+                                <ChevronRight color="#475569" size={20} />
+                            </View>
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInRight.duration(800).delay(900)}>
+                        <TouchableOpacity
+                            className="bg-white/5 border border-white/10 rounded-[28px] p-5 flex-row items-center mt-4"
+                            onPress={() => router.push('/main/food_history')}
+                        >
+                            <View className="w-14 h-14 bg-emerald-500/10 rounded-2xl items-center justify-center mr-4 border border-emerald-500/20">
+                                <Flame color="#34d399" size={28} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-lg font-bold text-white">Food Lens History</Text>
+                                <Text className="text-slate-500 text-xs mt-1">View saved meals and nutrition trends</Text>
                             </View>
                             <View className="bg-white/5 p-2 rounded-xl">
                                 <ChevronRight color="#475569" size={20} />
