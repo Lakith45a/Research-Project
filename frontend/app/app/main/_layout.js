@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Activity, Heart, MessageSquare } from 'lucide-react-native';
+import { Home, Activity, Heart, MessageSquare, Camera } from 'lucide-react-native';
 import { View, Platform } from 'react-native';
 
 export default function TabLayout() {
@@ -84,6 +84,18 @@ export default function TabLayout() {
                     ),
                 }}
             />
+            <Tabs.Screen
+                name="food_scan"
+                options={{
+                    headerTitle: 'Food Lens',
+                    tabBarLabel: 'Food Lens',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View className={focused ? 'bg-emerald-500/10 p-2 rounded-xl' : 'p-2'}>
+                            <Camera size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+                        </View>
+                    ),
+                }}
+            />
             {/* Hidden screens (not in bottom tab bar) but still part of the router layout */}
             <Tabs.Screen name="diabetes_quiz" options={{ href: null, headerTitle: 'Diet Check' }} />
             <Tabs.Screen name="diabetes_result" options={{ href: null, headerTitle: 'Result' }} />
@@ -91,6 +103,8 @@ export default function TabLayout() {
             <Tabs.Screen name="health_profile" options={{ href: null, headerTitle: 'Health Profile' }} />
             <Tabs.Screen name="hypertension_quiz" options={{ href: null, headerTitle: 'Lifestyle Check' }} />
             <Tabs.Screen name="hypertension_result" options={{ href: null, headerTitle: 'Result' }} />
+            <Tabs.Screen name="food_result" options={{ href: null, headerTitle: 'Food Nutrition' }} />
+            <Tabs.Screen name="food_history" options={{ href: null, headerTitle: 'Food History' }} />
         </Tabs>
     );
 }

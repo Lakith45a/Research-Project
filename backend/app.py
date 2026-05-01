@@ -4,11 +4,57 @@ from flask_cors import CORS
 from langchain_core.messages import HumanMessage
 from agent_graph import build_graph
 from langchain_core.messages import AIMessage, HumanMessage
+import asyncio
+import os
+import sys
 
 from hypertension import predict_hypertension
 from hypertension_recommondation import hypertension_recommendation_generator
 from diabetes import predict_diabetes
 from diabetes_recommondation import diabetes_recommendation_generator
+
+
+FOODLENS_ROOT = os.path.join(os.path.dirname(__file__), "foodlens")
+if FOODLENS_ROOT not in sys.path:
+    # Put FoodLens root first so `import app...` resolves to `foodlens/app`
+    # instead of this file (`backend/app.py`).
+    sys.path.insert(0, FOODLENS_ROOT)
+
+try:
+    from app.services.inference_service import process_image as foodlens_process_image
+    from app.services.nutrition_service import (
+        get_nutrition_by_name_response as foodlens_get_nutrition_by_name_response,
+        list_food_names as foodlens_list_food_names,
+    )
+    from app.services.model_registry import get_models as foodlens_get_models
+    FOODLENS_AVAILABLE = True
+except Exception as foodlens_import_error:
+    FOODLENS_AVAILABLE = False
+    FOODLENS_IMPORT_ERROR = str(foodlens_import_error)
+
+
+def _log_foodlens_startup_status():
+    print("\n========== FoodLens Startup ==========")
+    print(f"FoodLens root: {FOODLENS_ROOT}")
+
+    if not FOODLENS_AVAILABLE:
+        print("FoodLens status: FAILED")
+        print(f"Reason: {FOODLENS_IMPORT_ERROR}")
+        print("Endpoints /predict /scan /nutrition /foods will return 500.")
+        print("======================================\n")
+        return
+
+    print("FoodLens status: AVAILABLE")
+    try:
+        model1, model2 = foodlens_get_models()
+        print(f"Model 1 (classification): {'LOADED' if model1 else 'NOT LOADED'}")
+        print(f"Model 2 (detection): {'LOADED' if model2 else 'NOT LOADED'}")
+        if not model1 and not model2:
+            print("Warning: no food models loaded, detection will not work.")
+    except Exception as e:
+        print(f"Model warm-check failed: {e}")
+    print("FoodLens endpoints active: /predict, /scan, /nutrition, /foods")
+    print("======================================\n")
 
 
 graph = build_graph()
@@ -194,6 +240,89 @@ def check_diabetes():
         }), 500
 
 
+class _FlaskUploadFileAdapter:
+    """Adapter to expose Flask upload as FastAPI UploadFile-like object."""
+
+    def __init__(self, file_storage):
+        self._file_storage = file_storage
+        self.filename = file_storage.filename
+        self.content_type = file_storage.content_type
+
+    async def read(self):
+        return self._file_storage.read()
+
+
+@app.route("/predict", methods=["POST"])
+@app.route("/scan", methods=["POST"])
+def food_predict():
+    print("\n[FoodLens] Incoming request")
+    print(f"[FoodLens] Path: {request.path} Method: {request.method}")
+    print(f"[FoodLens] Content-Type: {request.content_type}")
+    print(f"[FoodLens] Content-Length: {request.content_length}")
+    print(f"[FoodLens] form keys: {list(request.form.keys())}")
+    print(f"[FoodLens] file keys: {list(request.files.keys())}")
+
+    if not FOODLENS_AVAILABLE:
+        print(f"[FoodLens] Module unavailable: {FOODLENS_IMPORT_ERROR}")
+        return jsonify(
+            {
+                "success": False,
+                "error": "FoodLens module failed to load",
+                "details": FOODLENS_IMPORT_ERROR,
+            }
+        ), 500
+
+    uploaded_file = request.files.get("file") or request.files.get("image")
+    if not uploaded_file:
+        print("[FoodLens] No file/image part found in multipart body.")
+        return jsonify({"success": False, "error": "No file/image uploaded"}), 400
+
+    try:
+        print(
+            f"[FoodLens] Received file: name={uploaded_file.filename}, "
+            f"mimetype={uploaded_file.mimetype}"
+        )
+        adapter = _FlaskUploadFileAdapter(uploaded_file)
+        result = asyncio.run(foodlens_process_image(adapter))
+        print("[FoodLens] Inference completed successfully.")
+        return jsonify(result)
+    except Exception as e:
+        print(f"[FoodLens] Inference error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/nutrition", methods=["GET"])
+def food_nutrition():
+    if not FOODLENS_AVAILABLE:
+        return jsonify(
+            {
+                "success": False,
+                "error": "FoodLens module failed to load",
+                "details": FOODLENS_IMPORT_ERROR,
+            }
+        ), 500
+
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "name query param is required"}), 400
+
+    return jsonify(foodlens_get_nutrition_by_name_response(name))
+
+
+@app.route("/foods", methods=["GET"])
+def food_list():
+    if not FOODLENS_AVAILABLE:
+        return jsonify(
+            {
+                "success": False,
+                "error": "FoodLens module failed to load",
+                "details": FOODLENS_IMPORT_ERROR,
+            }
+        ), 500
+
+    return jsonify(foodlens_list_food_names())
+
+
 
 
 
@@ -235,5 +364,8 @@ def diabetes_history():
 
 
 if __name__ == "__main__":
-    from waitress import serve; print("Server starting on http://localhost:5000"); serve(app, host="0.0.0.0", port=5000)
+    from waitress import serve
+    _log_foodlens_startup_status()
+    print("Server starting on http://localhost:5000")
+    serve(app, host="0.0.0.0", port=5000)
 
