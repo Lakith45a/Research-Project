@@ -1,0 +1,71 @@
+# ==================================
+# General / OS
+# ==================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==================================
+# Frontend (React Native / Expo / Node.js)
+# ==================================
+frontend/app/node_modules/
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+project.xcworkspace
+xcuserdata
+.vscode/
+# Logs
+logs
+*.log
+
+# ==================================
+# Backend (Python / Flask)
+# ==================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+backend/venv/
+backend/env/
+.venv/
+env/
+venv/
+ENV/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Credentials / Secrets (DO NOT COMMIT!)
+.env
+backend/.env
+backend/serviceAccountKey.json
+
+# Machine Learning / Data files
+*.pkl
+backend/*_vector_db/
+backend/chroma.sqlite3
+backend/data_set/
+backend/diabetes_finetune_dataset/
+backend/AI-Model/
+
+# Environments
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
