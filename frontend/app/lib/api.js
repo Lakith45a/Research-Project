@@ -1,7 +1,7 @@
 export const API_CONFIG = {
-    //BASE_URL: 'https://eight-toys-exist.loca.lt',
-    BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000',
-
+   
+    BASE_URL: 'https://slimy-lands-mate.loca.lt',  
+    
     // API Endpoints
     ENDPOINTS: {
         CHAT: '/chat',
