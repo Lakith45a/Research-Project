@@ -7,6 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UserPlus, Mail, Lock, User, CheckCircle2 } from 'lucide-react-native';
+import { Picker } from '@react-native-picker/picker';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ export default function RegisterScreen() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const router = useRouter();
+    const [location, setLocation] = useState('');
 
     const getFriendlyError = (code) => {
         switch (code) {
@@ -43,6 +45,11 @@ export default function RegisterScreen() {
                 setLoading(false);
                 return;
             }
+            if (!location) {
+                setError('Please select your location');
+                setLoading(false);
+                return;
+            }
             if (hobbies.length < 2 || hobbies.length > 5) {
                 setError('Please select between 2 and 5 hobbies');
                 setLoading(false);
@@ -52,6 +59,7 @@ export default function RegisterScreen() {
             const trimmedEmail = email.trim();
             const trimmedPassword = password.trim();
             const trimmedName = name.trim();
+            const trimmedLocation = location.trim();
 
             const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
             const user = userCredential.user;
@@ -60,6 +68,7 @@ export default function RegisterScreen() {
                 name: trimmedName,
                 email: trimmedEmail,
                 hobbies: hobbies,
+                location: trimmedLocation,
                 createdAt: new Date().toISOString(),
             });
 
@@ -145,6 +154,55 @@ export default function RegisterScreen() {
                                         onChangeText={setPassword}
                                         secureTextEntry
                                     />
+                                </View>
+                            </View>
+
+                            <View>
+                                <Text className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                    Live in
+                                </Text>
+
+                                <View className="bg-white/5 border border-white/10 rounded-2xl flex-row items-center px-4">
+                                    <Picker
+                                        selectedValue={location}
+                                        onValueChange={(itemValue) => setLocation(itemValue)}
+                                        dropdownIconColor="#94a3b8"
+                                        style={{ flex: 1, color: 'white' }}
+                                    >
+                                        <Picker.Item label="Select your location..." value="" />
+
+                                        <Picker.Item label="Colombo 1 (Fort)" value="colombo 1" />
+                                        <Picker.Item label="Colombo 2 (Slave Island)" value="colombo 2" />
+                                        <Picker.Item label="Colombo 3 (Kollupitiya)" value="colombo 3" />
+                                        <Picker.Item label="Colombo 4 (Bambalapitiya)" value="colombo 4" />
+                                        <Picker.Item label="Colombo 5 (Havelock Town)" value="colombo 5" />
+                                        <Picker.Item label="Colombo 6 (Wellawatte)" value="colombo 6" />
+                                        <Picker.Item label="Colombo 7 (Cinnamon Gardens)" value="colombo 7" />
+                                        <Picker.Item label="Colombo 8 (Borella)" value="colombo 8" />
+                                        <Picker.Item label="Colombo 9 (Dematagoda)" value="colombo 9" />
+                                        <Picker.Item label="Colombo 10 (Maradana)" value="colombo 10" />
+                                        <Picker.Item label="Colombo 11 (Pettah)" value="colombo 11" />
+                                        <Picker.Item label="Colombo 12" value="colombo 12" />
+                                        <Picker.Item label="Colombo 13 (Kotahena)" value="colombo 13" />
+                                        <Picker.Item label="Colombo 14 (Grandpass)" value="colombo 14" />
+                                        <Picker.Item label="Colombo 15 (Modara)" value="colombo 15" />
+
+                                        <Picker.Item label="Negombo" value="negombo" />
+                                        <Picker.Item label="Dehiwala" value="dehiwala" />
+                                        <Picker.Item label="Mount Lavinia" value="mount lavinia" />
+                                        <Picker.Item label="Moratuwa" value="moratuwa" />
+                                        <Picker.Item label="Panadura" value="panadura" />
+                                        <Picker.Item label="Kelaniya" value="kelaniya" />
+                                        <Picker.Item label="Ja-Ela" value="ja-ela" />
+                                        <Picker.Item label="Wattala" value="wattala" />
+
+                                        <Picker.Item label="Kandy" value="kandy" />
+                                        <Picker.Item label="Galle" value="galle" />
+                                        <Picker.Item label="Matara" value="matara" />
+                                        <Picker.Item label="Kurunegala" value="kurunegala" />
+                                        <Picker.Item label="Anuradhapura" value="anuradhapura" />
+                                        <Picker.Item label="Jaffna" value="jaffna" />
+                                    </Picker>
                                 </View>
                             </View>
 
