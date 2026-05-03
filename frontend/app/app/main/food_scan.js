@@ -17,7 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Camera, ImageIcon, ChevronRight, ChevronLeft, Search, AlertCircle } from 'lucide-react-native';
-import { getPredictUrl, getNutritionUrl, getFoodsUrl, FOOD_SERVER_URL } from '../../lib/foodApi';
+import { apiFetch } from '../../lib/api';
+import { getPredictUrl, getNutritionUrl, getFoodsUrl } from '../../lib/foodApi';
 import { setFoodScanResult, clearFoodScanResult } from '../../lib/foodScanStore';
 
 const MIN_ANALYZING_MS = 1200;
@@ -139,7 +140,7 @@ export default function FoodScanScreen() {
         });
       }
 
-      const response = await fetch(getPredictUrl(), {
+      const response = await apiFetch(getPredictUrl(), {
         method: 'POST',
         body: formData,
       });
@@ -212,7 +213,7 @@ export default function FoodScanScreen() {
 
   const fetchFoodsList = async () => {
     try {
-      const res = await fetch(getFoodsUrl());
+      const res = await apiFetch(getFoodsUrl());
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.foods)) setAllFoodNames(data.foods);
@@ -257,7 +258,7 @@ export default function FoodScanScreen() {
     const { [oldName]: _, ...rest } = serverNutritionMap;
     setServerNutritionMap(rest);
     try {
-      const res = await fetch(getNutritionUrl(newName));
+      const res = await apiFetch(getNutritionUrl(newName));
       if (res.ok) {
         const data = await res.json();
         if (data.nutrition && data.nutrition_available !== false) {
@@ -276,7 +277,7 @@ export default function FoodScanScreen() {
     addToAddedFoodsList(name);
     setFoods((prev) => [...prev, { name, portion: '100' }]);
     try {
-      const res = await fetch(getNutritionUrl(name));
+      const res = await apiFetch(getNutritionUrl(name));
       if (res.ok) {
         const data = await res.json();
         if (data.nutrition && data.nutrition_available !== false) {
@@ -431,7 +432,9 @@ export default function FoodScanScreen() {
           )}
           <ActivityIndicator size="large" color="#38bdf8" />
           <Text className="text-white font-bold text-lg mt-4">Detecting foods…</Text>
-          <Text className="text-slate-400 text-sm mt-2">{FOOD_SERVER_URL}</Text>
+          <Text className="text-slate-400 text-sm mt-2 text-center px-6">
+            This usually takes a few seconds…
+          </Text>
         </SafeAreaView>
       </View>
     );
