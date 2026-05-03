@@ -16,8 +16,10 @@ from langchain_chroma import Chroma
 from IPython.display import Image, display
 from operator import add
 import uuid
+from tavily import TavilyClient
 
-from db_con import get_user_hobbies
+from db_con import get_user_hobbies, get_user_location
+from logger import logger
 
 load_dotenv(override=True)
 
@@ -35,6 +37,11 @@ StressLevels = Literal[
     "High Stress", 
     "No Stress"]
 
+class SearchResultItem(TypedDict):
+    place_type: str
+    title: str
+    content: str
+    url: str
 
 QUESTIONS = [
 "In the last month, how often have you been upset because of something that happened unexpectedly?",
@@ -60,7 +67,7 @@ class State(TypedDict):
     stress_level: Optional[StressLevels]
     recommendations: Optional[str]
     complete_test:bool
-
+    search_results: Optional[List[SearchResultItem]]
 
 class PsychiatristOutput(BaseModel):
 
@@ -133,6 +140,7 @@ If not answer is clear:
     }
 
 
+
 def store_answer(state: State) -> State:
 
     return {
@@ -179,10 +187,144 @@ def retrieval_node(state: State):
         "recommendations": context
     }
 
+
+tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+
+
+def tavily_search(query: str):
+    response = tavily_client.search(
+        query=query,
+        search_depth="basic",
+        max_results=5
+    )
+
+    results = []
+
+    for r in response.get("results", []):
+        results.append({
+            "title": r.get("title"),
+            "url": r.get("url"),
+            "content": r.get("content")
+        })
+
+    return results
+
+class SearchQueryItem(BaseModel):
+    query: str = Field(
+        description="Type of place user should visit (e.g., beach, park, psychiatrist)"
+    )
+
+class QueryBuilderOutput(BaseModel):
+    queries: List[SearchQueryItem]
+
+def online_search(state: dict) -> dict:
+    try:
+        recommendations = state["recommendations"]
+        location= get_user_location(state["user_id"])
+
+        system_prompt = """
+    You extract ONLY place-based actions from given recommendations only.
+
+    Goal:
+    Return types of places the user should visit.
+
+    STRICT RULES:
+
+    1. ONLY include recommendations that require going to a place
+
+    2. IGNORE completely:
+    - food (eat, drink)
+    - breathing exercises
+    - sleep
+    - talking to friends
+    - indoor activities
+
+    3. Extract ONLY place types (NOT full sentences)
+
+    Allowed outputs:
+    - beach
+    - park
+    - waterfall
+    - jungle
+    - psychiatrist
+    - therapist
+    - nature place
+    - dancing class
+    - gym
+    - yoga
+    - music concert
+
+    4. Normalize vague phrases:
+    - "go outside" → park or nature place
+    - "get professional support" → psychiatrist
+
+    5. Output must be SIMPLE words/phrases:
+    ❌ "best beaches near city"
+    ❌ "visit a park nearby"
+    ✅ "beach"
+    ✅ "park"
+
+    6. Remove duplicates
+
+    7. If nothing matches → return empty list
+    """
+
+        response = query_llm_structured.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=recommendations)
+        ])
+
+        queries = list({item.query.lower() for item in response.queries})
+
+        if not queries:
+            logger.info(f"Search results found: {len(all_results)}")
+            return {
+                "search_results": []
+            }
+
+        all_results = []
+
+        for place in queries:
+            query = f"best {place}s near {location}"
+
+            response = tavily_client.search(
+                query=query,
+                search_depth="basic",
+                max_results=1
+            )
+
+            for r in response.get("results", []):
+                all_results.append({
+                    "place_type": place,
+                    "title": r.get("title"),
+                    "content": r.get("content"),
+                    "url": r.get("url")
+                })
+
+        logger.info(f"Search results found: {len(all_results)}")
+
+        return {
+            "search_results": all_results
+        }
+    except Exception as e:
+        logger.error(f"Error in online_search: {e}")
+        return {
+            "search_results": []
+        }
+
+query_llm = ChatOpenAI(
+    model="gpt-4o-mini",
+    temperature=0
+)
+
+query_llm_structured = query_llm.with_structured_output(QueryBuilderOutput)
+
+
+
 class RecommendationOutput(BaseModel):
 
     response: str = Field(
-        description="Message to send to the user or recommendations based on stress level."
+        description="Message to send to the user or recommendations based on stress level and search results."
     )
     
     interact_with_user: bool = Field(
@@ -197,30 +339,54 @@ recommendations_llm = ChatOpenAI(
 
 recommendations_llm_with_output = recommendations_llm.with_structured_output(RecommendationOutput)
 
-
 def recommendation(state: State) -> State:
 
     hobbies = get_user_hobbies(state["user_id"])
+    location=get_user_location(state["user_id"])
+    hobbies_str = ", ".join(hobbies)
+    search_results = state.get("search_results") or []
 
-    hobbies_str = ", ".join(hobbies) if hobbies else ""
-
+    if not search_results:
+        logger.warning("Search returned empty results")
+        search_results_str = "No recommended places found."
+    else:
+        logger.info(f"search results found: {len(search_results)}")
+        search_results_str = "\n\n".join(
+            f"Place: {r['title']}\n"
+            f"Type: {r['place_type']}\n"
+            f"Description: {(r.get('content') or '')[:100]}...\n"
+            f"Link: {r['url']}"
+            for r in search_results
+        )
+    
+    
+    print(search_results_str)
+    
     base_system_message = f"""
     You are a supportive mental wellness assistant having a natural conversation with the user.
 
     Context:
-    - User stress level determined from their responses: {state["stress_level"]}
+    - User stress level : {state["stress_level"]}
     - Retrieved stress-management recommendations from the knowledge base: {state["recommendations"]}
     - User hobbies: {hobbies_str}
-
+    - recommended places: {search_results_str}
+    
     Instructions:
     - Politely inform the user about the stress level(exactly given) determined from analyzing their responses.
-    - Provide helpful recommendations to reduce stress using the retrieved recommendations.
+    - Provide helpful recommendations to reduce stress using the retrieved recommendations. 
+    - mandatory: Add "recommended places" to the response if there are "recommended places" in the context.
     - If possible, relate the suggestions to the user's hobbies.
     - Answer any related questions the user asks and continue the conversation naturally.
     - Be supportive, empathetic, and keep responses clear and concise.
     - If the stress level is **"No Stress"**, politely inform the user that they currently do not show signs of stress and no specific recommendations are necessary, but encourage them to maintain healthy habits.
-    """
 
+    Conversation Rules:
+    - Only respond to stress-related or wellness-related queries.
+    - If the user asks something unrelated, respond with:
+      "I’m here to help only with stress management and mental wellness. How can I assist you with that?"
+    - Keep the conversation natural, supportive, and empathetic.
+    - Keep responses clear and concise (avoid long paragraphs).
+    """
     messages = (
         [SystemMessage(content=base_system_message)]
         + state["messages"]
@@ -262,7 +428,6 @@ def after_store_router(state: State):
 
     return "psychiatrist"
 
-
 def build_graph():
     builder = StateGraph(State)
 
@@ -270,6 +435,7 @@ def build_graph():
     builder.add_node("store_answer", store_answer)
     builder.add_node("calculate_stress", calculate_stress)
     builder.add_node("retrieval", retrieval_node)
+    builder.add_node("search", online_search)
     builder.add_node("recommendation", recommendation)
 
     builder.add_conditional_edges(
@@ -278,8 +444,6 @@ def build_graph():
         {"psychiatrist": "psychiatrist",
         "recommendation": "recommendation"}
     )
-
-
     builder.add_conditional_edges(
         "psychiatrist",
         psychiatrist_router,
@@ -288,7 +452,6 @@ def build_graph():
             "store_answer": "store_answer"
         }
     )
-
     builder.add_conditional_edges(
         "store_answer",
         after_store_router,
@@ -297,7 +460,6 @@ def build_graph():
             "calculate_stress": "calculate_stress"
         }
     )
-
     builder.add_conditional_edges(
         "recommendation",
         after_recommendation_router,
@@ -308,9 +470,9 @@ def build_graph():
     )
 
     builder.add_edge("calculate_stress", "retrieval")
-    builder.add_edge("retrieval", "recommendation")
+    builder.add_edge("retrieval", "search")
+    builder.add_edge("search", "recommendation")
     builder.add_edge("recommendation", END)
     memory = MemorySaver()
-
 
     return builder.compile(checkpointer=memory)
