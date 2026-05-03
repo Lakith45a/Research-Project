@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { auth, db } from '../../lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { getApiUrl, API_CONFIG, apiFetch } from '../../lib/api';
+import { getApiUrl, API_CONFIG } from '../../lib/api';
 import { Heart, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -128,7 +128,7 @@ export default function HypertensionScreen() {
         console.log('Payload:', JSON.stringify(payload, null, 2));
 
         try {
-            const response = await apiFetch(getApiUrl(API_CONFIG.ENDPOINTS.HYPERTENSION_CHECK), {
+            const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HYPERTENSION_CHECK), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

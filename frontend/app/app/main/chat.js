@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../lib/firebase';
-import { getApiUrl, API_CONFIG, apiFetch } from '../../lib/api';
+import { getApiUrl, API_CONFIG } from '../../lib/api';
 import { Send, Bot, User, Trash2 } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -86,10 +86,6 @@ export default function ChatScreen() {
     const handleSend = async () => {
         const trimmedInput = input.trim();
         if (!trimmedInput) return;
-        if (!isLoaded || !sessionId) {
-            console.warn('Chat: session not ready yet — wait a moment and try again.');
-            return;
-        }
 
         const userMessage = { id: Date.now().toString(), text: trimmedInput, isUser: true };
         setMessages(prev => [...prev, userMessage]);
@@ -100,31 +96,21 @@ export default function ChatScreen() {
             const chatPayload = {
                 session_id: sessionId,
                 query: trimmedInput,
-                user_id: auth.currentUser?.uid || 'guest_user',
+                user_id: auth.currentUser?.uid || 'guest_user'
             };
 
             console.log('--- Chat API Request ---');
             console.log('Payload:', JSON.stringify(chatPayload, null, 2));
 
-            const url = getApiUrl(API_CONFIG.ENDPOINTS.CHAT);
-            const response = await apiFetch(url, {
+            const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.CHAT), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(chatPayload),
             });
 
-            const rawText = await response.text();
-            let data;
-            try {
-                data = rawText ? JSON.parse(rawText) : {};
-            } catch {
-                data = {};
-            }
+            if (!response.ok) throw new Error('Network response was not ok');
 
-            if (!response.ok) {
-                const detail = data.error || rawText?.slice(0, 200) || response.statusText;
-                throw new Error(`Chat API ${response.status}: ${detail}`);
-            }
+            const data = await response.json();
             console.log('--- Chat API Response ---');
             console.log('Data:', JSON.stringify(data, null, 2));
 
@@ -134,15 +120,11 @@ export default function ChatScreen() {
 
         } catch (error) {
             console.error('Chat API Error:', error);
-            const hint =
-                error?.message && String(error.message).length < 220
-                    ? error.message
-                    : "Check that the backend is running and EXPO_PUBLIC_API_BASE_URL in .env points to your PC (same Wi‑Fi).";
             const errorMessage = {
                 id: (Date.now() + 1).toString(),
-                text: `Could not get a reply. ${hint}`,
+                text: "I'm having a little trouble connecting right now. Please check your connection and try sending your message again.",
                 isUser: false,
-                isError: true,
+                isError: true
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
@@ -232,7 +214,7 @@ export default function ChatScreen() {
                             className={`w-12 h-12 rounded-full items-center justify-center mb-1 mr-1 ${input.trim() ? 'bg-sky-500' : 'bg-white/10'
                                 }`}
                             onPress={handleSend}
-                            disabled={!input.trim() || loading || !sessionId || !isLoaded}
+                            disabled={!input.trim() || loading}
                         >
                             <Send color={input.trim() ? "#fff" : "#64748b"} size={20} />
                         </TouchableOpacity>
