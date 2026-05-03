@@ -4,8 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../lib/firebase';
 import { getApiUrl, API_CONFIG } from '../../lib/api';
 import { Send, Bot, User, Trash2 } from 'lucide-react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import Markdown from 'react-native-markdown-display';
+import * as Linking from 'expo-linking';
 
 export default function ChatScreen() {
     const [messages, setMessages] = useState([
@@ -20,6 +21,21 @@ export default function ChatScreen() {
     const [loading, setLoading] = useState(false);
     const scrollViewRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
+
+    const userMarkdownStyles = {
+        text: { color: 'white', fontSize: 16, lineHeight: 24, fontWeight: '500' },
+        link: { color: '#60a5fa', textDecorationLine: 'underline' },
+    };
+
+    const aiMarkdownStyles = {
+        text: { color: '#e2e8f0', fontSize: 16, lineHeight: 24, fontWeight: '500' },
+        link: { color: '#60a5fa', textDecorationLine: 'underline' },
+    };
+
+    const errorMarkdownStyles = {
+        text: { color: '#f87171', fontSize: 16, lineHeight: 24, fontWeight: '500' },
+        link: { color: '#60a5fa', textDecorationLine: 'underline' },
+    };
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -174,9 +190,12 @@ export default function ChatScreen() {
                                             : 'bg-white/10 border border-white/5 rounded-bl-sm'
                                         }`}
                                 >
-                                    <Text className={`${msg.isUser ? 'text-white' : msg.isError ? 'text-rose-400' : 'text-slate-200'} text-base leading-6 font-medium`}>
+                                    <Markdown
+                                        style={msg.isUser ? userMarkdownStyles : msg.isError ? errorMarkdownStyles : aiMarkdownStyles}
+                                        onLinkPress={(url) => Linking.openURL(url)}
+                                    >
                                         {msg.text}
-                                    </Text>
+                                    </Markdown>
                                 </View>
                                 {msg.isUser && (
                                     <View className="w-8 h-8 rounded-full bg-sky-500/20 items-center justify-center ml-2 mt-auto">
